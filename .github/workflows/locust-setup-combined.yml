@@ -1,0 +1,81 @@
+# locust-setup-combined.yml
+#
+# Checks out BOTH this repo (into internal-repo/) and the external repo
+# (into external-repo/), copies each locustfile under a unique name so
+# they don't overwrite each other, then runs BOTH tests sequentially.
+# Trigger: manual (workflow_dispatch)
+
+name: Locust — Combined (internal + external)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-locust:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Step 1: Checkout THIS repo into its own subfolder ─────────────────
+      # Using `path: internal-repo` so both checkouts can coexist side-by-side
+      # under the runner's workspace root without one overwriting the other.
+      - name: Checkout this repository → internal-repo/
+        uses: actions/checkout@v4
+        with:
+          path: internal-repo
+
+      # ── Step 2: Checkout the EXTERNAL repo into its own subfolder ─────────
+      - name: Checkout external repo (kaviri23/test) → external-repo/
+        uses: actions/checkout@v4
+        with:
+          repository: kaviri23/test
+          path: external-repo
+
+      # After steps 1 & 2 the workspace looks like:
+      #   ./internal-repo/   ← this repo (locustfile.py at root)
+      #   ./external-repo/   ← kaviri23/test (locustfile.py at root)
+
+      # ── Step 3: Set up Python 3.12 ───────────────────────────────────────
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ── Step 4: Create virtual environment ───────────────────────────────
+      - name: Create virtual environment
+        run: python -m venv .venv
+
+      # ── Step 5: Install Locust ────────────────────────────────────────────
+      - name: Install Locust
+        run: |
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install locust
+
+      # ── Step 6: Verify Locust installation ───────────────────────────────
+      # Fail fast — if this errors, skip the rest.
+      - name: Verify Locust version
+        run: .venv/bin/locust --version
+
+      # ── Step 7: Copy both locustfiles under distinct names ────────────────
+      # Distinct filenames mean both files can coexist and be run without
+      # one overwriting the other.
+      - name: Copy locustfiles (renamed to avoid collision)
+        run: |
+          cp internal-repo/locustfile.py .venv/locustfile_internal.py
+          cp external-repo/locustfile.py .venv/locustfile_external.py
+
+      # ── Step 8: Run the INTERNAL Locust test ─────────────────────────────
+      - name: Run internal Locust test
+        run: |
+          .venv/bin/locust \
+            -f .venv/locustfile_internal.py \
+            --headless \
+            --exit-code-on-error 1
+
+      # ── Step 9: Run the EXTERNAL Locust test ─────────────────────────────
+      # Runs after the internal test completes (sequential, not parallel).
+      - name: Run external Locust test
+        run: |
+          .venv/bin/locust \
+            -f .venv/locustfile_external.py \
+            --headless \
+            --exit-code-on-error 1

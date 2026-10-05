@@ -1,0 +1,69 @@
+# locust-setup-internal.yml
+#
+# Runs a Locust load test using locustfile.py from THIS repository.
+# Trigger: manual (workflow_dispatch) — go to Actions tab → select this
+# workflow → Run workflow.
+
+name: Locust — Internal repo
+
+on:
+  workflow_dispatch:   # manual trigger only
+
+jobs:
+  run-locust:
+    runs-on: ubuntu-latest   # fresh Ubuntu VM every run
+
+    steps:
+      # ── Step 1: Check out THIS repo ──────────────────────────────────────
+      # actions/checkout clones the repo into the runner's working directory.
+      # No extra options needed when the locustfile lives in the same repo.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Step 2: Set up Python 3.12 ───────────────────────────────────────
+      # The setup-python action installs the requested Python version and
+      # adds it to PATH so `python` and `pip` resolve to 3.12.
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ── Step 3: Create a virtual environment ─────────────────────────────
+      # Using a venv isolates Locust from any other system packages.
+      # All subsequent pip/locust commands must activate it first (see below).
+      - name: Create virtual environment
+        run: python -m venv .venv
+
+      # ── Step 4: Install Locust ────────────────────────────────────────────
+      # Upgrade pip first (avoids legacy resolver warnings), then install
+      # Locust inside the venv.
+      # Note: we call `.venv/bin/pip` directly instead of activating the venv
+      # in a separate shell step, which is more reliable in GitHub Actions.
+      - name: Install Locust
+        run: |
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install locust
+
+      # ── Step 5: Verify Locust installation ───────────────────────────────
+      # Fail fast: if `locust --version` doesn't work, something went wrong
+      # during install and we don't want to waste time on later steps.
+      - name: Verify Locust version
+        run: .venv/bin/locust --version
+
+      # ── Step 6: Copy locustfile into the venv ────────────────────────────
+      # The venv's site-packages is not the only place scripts can live —
+      # here we copy locustfile.py next to the venv directory so locust -f
+      # can find it easily, regardless of how the workflow was triggered.
+      - name: Copy locustfile into place
+        run: cp locustfile.py .venv/locustfile.py
+
+      # ── Step 7: Run the Locust load test ─────────────────────────────────
+      # --headless: required for CI (no browser/display available)
+      # All other params (host, users, spawn-rate, run-time) are read from
+      # the hardcoded constants inside locustfile.py itself.
+      - name: Run Locust load test
+        run: |
+          .venv/bin/locust \
+            -f .venv/locustfile.py \
+            --headless \
+            --exit-code-on-error 1

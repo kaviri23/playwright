@@ -1,0 +1,87 @@
+# locust-setup-with-auth.yml
+#
+# Full pipeline:
+#   1. Checkout this repo
+#   2. Set up Python + venv
+#   3. Install Locust
+#   4. Install Playwright + Chromium
+#   5. Run playwright_login.py → captures session cookie → writes AUTH_TOKEN
+#      to $GITHUB_ENV so later steps can see it
+#   6. Run Locust (now with AUTH_TOKEN in environment → requests include the
+#      Authorization header set inside locustfile.py)
+# Trigger: manual (workflow_dispatch)
+
+name: Locust — With Playwright auth
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-locust-with-auth:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Step 1: Checkout this repository ─────────────────────────────────
+      # Both locustfile.py and playwright_login.py live at the repo root.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Step 2: Set up Python 3.12 ───────────────────────────────────────
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ── Step 3: Create virtual environment ───────────────────────────────
+      - name: Create virtual environment
+        run: python -m venv .venv
+
+      # ── Step 4: Install Locust ────────────────────────────────────────────
+      - name: Install Locust
+        run: |
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install locust
+
+      # ── Step 5: Verify Locust installation ───────────────────────────────
+      - name: Verify Locust version
+        run: .venv/bin/locust --version
+
+      # ── Step 6: Install Playwright (Python package) ───────────────────────
+      # The `playwright` Python package is separate from the Node.js version.
+      # It installs the Python bindings and the CLI that downloads browsers.
+      - name: Install Playwright Python package
+        run: .venv/bin/pip install playwright
+
+      # ── Step 7: Install Chromium browser + system dependencies ────────────
+      # `playwright install chromium` downloads the Chromium binary.
+      # `--with-deps` also installs the OS-level system libraries that
+      # headless Chromium needs on a fresh Ubuntu runner (fonts, libnss3,
+      # libatk, etc.).  Without this flag the browser will fail to launch.
+      - name: Install Chromium + system deps
+        run: .venv/bin/playwright install chromium --with-deps
+
+      # ── Step 8: Run Playwright login script ───────────────────────────────
+      # playwright_login.py logs in, extracts the session cookie, then writes
+      #   AUTH_TOKEN=<value>
+      # to the file path stored in $GITHUB_ENV.  GitHub Actions reads that
+      # file after each step and makes every key=value line available as an
+      # environment variable for ALL subsequent steps in the same job.
+      # (This is the correct way to pass values between steps in Actions —
+      # `export` inside a `run:` block only lives for that step's shell.)
+      - name: Run Playwright login → capture AUTH_TOKEN
+        run: .venv/bin/python playwright_login.py
+
+      # ── Step 9: Copy locustfile into the venv ────────────────────────────
+      - name: Copy locustfile into place
+        run: cp locustfile.py .venv/locustfile.py
+
+      # ── Step 10: Run Locust with auth token ───────────────────────────────
+      # AUTH_TOKEN is now in the environment (set by Step 8 via $GITHUB_ENV).
+      # locustfile.py reads it with os.environ.get("AUTH_TOKEN") and attaches
+      # it as an Authorization header on every request.
+      - name: Run Locust load test (authenticated)
+        run: |
+          .venv/bin/locust \
+            -f .venv/locustfile.py \
+            --headless \
+            --exit-code-on-error 1

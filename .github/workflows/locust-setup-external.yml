@@ -1,0 +1,68 @@
+# locust-setup-external.yml
+#
+# Runs a Locust load test using locustfile.py from a SEPARATE public GitHub
+# repository (kaviri23/test).  The external repo is checked out into a
+# dedicated subfolder so it doesn't collide with this repo's own files.
+# Trigger: manual (workflow_dispatch)
+
+name: Locust — External repo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-locust:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Step 1: Checkout THIS repo (needed for any shared config/scripts) ─
+      # Even though the locustfile comes from elsewhere, we still check out
+      # this repo so the runner has the full workspace context.
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      # ── Step 2: Checkout the EXTERNAL repo into a subfolder ───────────────
+      # `repository:` names the GitHub repo (owner/name format).
+      # `path:` sets the subfolder the checkout lands in.
+      # After this step, the runner will have:
+      #   ./                  ← this repo
+      #   ./external-repo/    ← kaviri23/test repo
+      - name: Checkout external repo (kaviri23/test)
+        uses: actions/checkout@v4
+        with:
+          repository: kaviri23/test
+          path: external-repo
+
+      # ── Step 3: Set up Python 3.12 ───────────────────────────────────────
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ── Step 4: Create virtual environment ───────────────────────────────
+      - name: Create virtual environment
+        run: python -m venv .venv
+
+      # ── Step 5: Install Locust ────────────────────────────────────────────
+      - name: Install Locust
+        run: |
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install locust
+
+      # ── Step 6: Verify Locust installation ───────────────────────────────
+      - name: Verify Locust version
+        run: .venv/bin/locust --version
+
+      # ── Step 7: Copy the external locustfile into place ──────────────────
+      # The locustfile.py sits at the root of kaviri23/test, which was
+      # checked out to ./external-repo/.
+      - name: Copy external locustfile into place
+        run: cp external-repo/locustfile.py .venv/locustfile.py
+
+      # ── Step 8: Run the Locust load test ─────────────────────────────────
+      - name: Run Locust load test (external locustfile)
+        run: |
+          .venv/bin/locust \
+            -f .venv/locustfile.py \
+            --headless \
+            --exit-code-on-error 1
