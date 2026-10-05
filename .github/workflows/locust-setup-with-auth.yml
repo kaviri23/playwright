@@ -80,8 +80,4 @@ jobs:
       # locustfile.py reads it with os.environ.get("AUTH_TOKEN") and attaches
       # it as an Authorization header on every request.
       - name: Run Locust load test (authenticated)
-        run: |
-          .venv/bin/locust \
-            -f .venv/locustfile.py \
-            --headless \
-            --exit-code-on-error 1
+        run: .venv/bin/python .venv/locustfile.py

@@ -61,8 +61,4 @@ jobs:
 
       # ── Step 8: Run the Locust load test ─────────────────────────────────
       - name: Run Locust load test (external locustfile)
-        run: |
-          .venv/bin/locust \
-            -f .venv/locustfile.py \
-            --headless \
-            --exit-code-on-error 1
+        run: .venv/bin/python .venv/locustfile.py

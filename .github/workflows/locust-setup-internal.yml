@@ -7,11 +7,11 @@
 name: Locust — Internal repo
 
 on:
-  workflow_dispatch:   # manual trigger only
+  workflow_dispatch: # manual trigger only
 
 jobs:
   run-locust:
-    runs-on: ubuntu-latest   # fresh Ubuntu VM every run
+    runs-on: ubuntu-latest # fresh Ubuntu VM every run
 
     steps:
       # ── Step 1: Check out THIS repo ──────────────────────────────────────
@@ -62,8 +62,4 @@ jobs:
       # All other params (host, users, spawn-rate, run-time) are read from
       # the hardcoded constants inside locustfile.py itself.
       - name: Run Locust load test
-        run: |
-          .venv/bin/locust \
-            -f .venv/locustfile.py \
-            --headless \
-            --exit-code-on-error 1
+        run: .venv/bin/python .venv/locustfile.py
