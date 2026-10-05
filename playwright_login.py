@@ -34,7 +34,7 @@ class LoginPage:
 
     def navigate_to_login(self):
         """Navigate to the login URL."""
-        self.page.goto(LOGIN_URL)
+        self.page.goto(LOGIN_URL, timeout=60_000, wait_until="domcontentloaded")
 
     def enter_username(self, username: str):
         """Fill the username field."""
