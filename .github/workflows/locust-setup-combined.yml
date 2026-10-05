@@ -65,9 +65,9 @@ jobs:
 
       # ── Step 8: Run the INTERNAL Locust test ─────────────────────────────
       - name: Run internal Locust test
-        run: .venv/bin/python .venv/locustfile.py
+        run: .venv/bin/python .venv/locustfile_internal.py
 
       # ── Step 9: Run the EXTERNAL Locust test ─────────────────────────────
       # Runs after the internal test completes (sequential, not parallel).
       - name: Run external Locust test
-        run: .venv/bin/python .venv/locustfile.py
+        run: .venv/bin/python .venv/locustfile_external.py
