@@ -6,6 +6,8 @@ Or let the workflow run it via: locust -f locustfile.py ...
 """
 
 import os
+import sys
+
 import subprocess
 from locust import HttpUser, task, between
 
@@ -47,11 +49,10 @@ class WebsiteUser(HttpUser):
             # Stop this virtual user after MAX_ITERATIONS executions.
             self.stop()
 
-import sys
 # ── Entry point — run directly with `python locustfile.py` ────────────────────
 if __name__ == "__main__":
     cmd = [
-        "locust",
+        sys.executable, "-m", "locust",
         "-f", __file__,
         "--headless",              # no web UI (required for CI)
         "--host",    TARGET_HOST,
