@@ -36,7 +36,9 @@ class WebsiteUser(HttpUser):
     def _auth_headers(self):
         """Return Authorization header dict, or empty dict if no token."""
         if self._auth_token:
+            print(f"[DEBUG] Attaching AUTH_TOKEN to request: {self._auth_token[:20]}...")
             return {"Authorization": f"Bearer {self._auth_token}"}
+        print("[DEBUG] No AUTH_TOKEN found — sending unauthenticated request")
         return {}
 
     @task
