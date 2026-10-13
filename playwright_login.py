@@ -54,9 +54,22 @@ class LoginPage:
         The practice site redirects to /secure and shows a flash message.
         Adapt this selector for your real app's success indicator.
         """
-        self.page.wait_for_url("**/secure", timeout=30_000)
+        try:
+            self.page.wait_for_url("**/secure", timeout=30_000)
+        except Exception:
+            print(f"[DEBUG] Current URL at failure: {self.page.url}")
+            print(f"[DEBUG] Page title: {self.page.title()}")
+            self.page.screenshot(path="debug_failure.png")
+            print("[DEBUG] Screenshot saved to debug_failure.png")
+            raise  # re-raise so the workflow still fails/stops here, but now with evidence
+
         flash = self.page.locator(".flash.success")
         flash.wait_for(timeout=15_000)
+        text = flash.inner_text()
+        assert "You logged into a secure area!" in text, (
+            f"Unexpected post-login message: {text!r}"
+        )
+        print("Login confirmed:", text.strip())
 
 
 def extract_session_cookie(context) -> str:
